@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/veandco/go-sdl2/sdl"
+	"github.com/veandco/go-sdl2/ttf"
 )
 
 type Vector2 struct {
@@ -28,7 +29,7 @@ const (
 
 var balls []*Ball = make([]*Ball, 0)
 
-const ballRadius = 10
+const ballThickness = 2
 
 func main() {
 
@@ -37,6 +38,11 @@ func main() {
 	}
 
 	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
+		return
+	}
+
+	err := ttf.Init()
+	if err != nil {
 		return
 	}
 
@@ -52,6 +58,12 @@ func main() {
 
 	renderer, err := sdl.CreateRenderer(window, -1, sdl.RENDERER_ACCELERATED)
 	if err != nil {
+		return
+	}
+
+	font, err := ttf.OpenFont("OpenSans-Regular.ttf", 100)
+	if err != nil {
+		fmt.Println("ERROR ", err)
 		return
 	}
 
@@ -80,9 +92,14 @@ func main() {
 					keyEvent := event.(*sdl.KeyboardEvent)
 					if keyEvent.Type == sdl.KEYDOWN {
 						switch keyEvent.Keysym.Sym {
-						case sdl.K_p:
-
+						case sdl.K_n:
+							balls = append(balls, MakeBall())
+						case sdl.K_SPACE:
+							balls = append(balls, MakeBall())
+						case sdl.K_ESCAPE:
+							return
 						}
+
 					}
 				}
 			}
@@ -90,19 +107,30 @@ func main() {
 			renderer.SetDrawColor(0, 0, 0, 255)
 			renderer.Clear()
 
+			renderer.SetScale(ballThickness, ballThickness)
+
 			for _, ball := range balls {
 				vertsToDraw := getCirclePoints(ball)
 				drawVertices(renderer, vertsToDraw, ball.Color)
 
 				tickBallPosition(ball, float32(elapsed.Seconds()))
-				fmt.Println("elapsed time: ", elapsed.Milliseconds())
+				fmt.Println("elapsed time: ", elapsed.Milliseconds(), "ms")
 				// }
 			}
+			renderer.SetScale(1, 1)
+
+			text := "Balls: " + fmt.Sprint(len(balls)) + ", Press n or SPACE to add ball"
+			surface, _ := font.RenderUTF8Blended(text, sdl.Color{255, 255, 255, 255})
+			texture, _ := renderer.CreateTextureFromSurface(surface)
+			surface.Free()
+			renderer.Copy(texture, nil, &sdl.Rect{0, 0, 500, 50})
+			texture.Destroy()
 
 			renderer.Present()
 
 		}
 	}
+	font.Close()
 }
 
 func MakeBall() *Ball {
@@ -131,10 +159,12 @@ func tickBallPosition(ball *Ball, delta float32) {
 	var ballPosition Vector2 = ball.Position
 	var ballVelocity Vector2 = ball.Velocity
 
+	var ballRadius float32 = ball.Radius
+
 	ball.Position.X += ballVelocity.X * delta
 	ball.Position.Y += ballVelocity.Y * delta
 
-	fmt.Println("ball position: ", ballPosition, " ball velocity: ", ballVelocity)
+	// fmt.Println("ball position: ", ballPosition, " ball velocity: ", ballVelocity)
 
 	if ballPosition.X > screenWidth-ballRadius {
 		ball.Position.X = screenWidth - ballRadius
@@ -156,7 +186,6 @@ func tickBallPosition(ball *Ball, delta float32) {
 		ball.Position.Y = ballRadius
 		ball.Velocity.Y = -ballVelocity.Y
 	}
-
 }
 
 func getCirclePoints(ball *Ball) []Vector2 {
@@ -189,6 +218,14 @@ func getCirclePoints(ball *Ball) []Vector2 {
 			x -= 1
 			err -= 2*x + 1
 		}
+	}
+
+	// adjust for scale
+	// https://stackoverflow.com/questions/21560384/how-to-specify-width-or-point-size-in-sdl-2-0-draw-points-lines-or-rect
+
+	for i := 0; i < len(verts); i++ {
+		verts[i].X /= ballThickness
+		verts[i].Y /= ballThickness
 	}
 
 	return verts
