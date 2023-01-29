@@ -29,7 +29,7 @@ const (
 
 var balls []*Ball = make([]*Ball, 0)
 
-const ballThickness = 2
+var ballThickness float32 = 2
 
 func main() {
 
@@ -96,6 +96,13 @@ func main() {
 							balls = append(balls, MakeBall())
 						case sdl.K_SPACE:
 							balls = append(balls, MakeBall())
+						case sdl.K_p:
+							ballThickness += 0.2
+						case sdl.K_o:
+							ballThickness -= 0.2
+							if ballThickness <= 1 {
+								ballThickness = 1
+							}
 						case sdl.K_ESCAPE:
 							return
 						}
@@ -119,12 +126,20 @@ func main() {
 			}
 			renderer.SetScale(1, 1)
 
-			text := "Balls: " + fmt.Sprint(len(balls)) + ", Press n or SPACE to add ball"
+			text := "Press n or SPACE to add ball. Press O and P for thickness"
 			surface, _ := font.RenderUTF8Blended(text, sdl.Color{255, 255, 255, 255})
 			texture, _ := renderer.CreateTextureFromSurface(surface)
 			surface.Free()
-			renderer.Copy(texture, nil, &sdl.Rect{0, 0, 500, 50})
+			renderer.Copy(texture, nil, &sdl.Rect{0, 0, screenWidth, 50})
+
+			text2 := "Balls: " + fmt.Sprint(len(balls)) + ", delta time: " + fmt.Sprint(elapsed.Milliseconds()) + "ms"
+			surface2, _ := font.RenderUTF8Blended(text2, sdl.Color{255, 255, 255, 255})
+			texture2, _ := renderer.CreateTextureFromSurface(surface2)
+			surface2.Free()
+			renderer.Copy(texture2, nil, &sdl.Rect{0, screenHeight - 50, 300, 50})
 			texture.Destroy()
+
+			texture2.Destroy()
 
 			renderer.Present()
 
@@ -248,3 +263,4 @@ const SCALE = 1
 func TransformPoint(x float32, y float32) *sdl.Point {
 	return &sdl.Point{X: int32(offsetX + x*SCALE), Y: int32(offsetY + (y * SCALE))}
 }
+
