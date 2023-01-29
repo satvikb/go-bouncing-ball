@@ -3,6 +3,7 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"time"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -13,19 +14,27 @@ type Vector2 struct {
 	Y float32
 }
 
+type Ball struct {
+	Position Vector2
+	Radius   float32
+	Velocity Vector2
+	Color    sdl.Color
+}
+
 const (
 	screenWidth  = 800
 	screenHeight = 600
 )
 
-var ballPosition Vector2
-var ballVelocity Vector2
+var balls []*Ball = make([]*Ball, 0)
 
 const ballRadius = 10
 
 func main() {
-	ballPosition = Vector2{X: 400, Y: 300}
-	ballVelocity = Vector2{X: 10, Y: 100}
+
+	for i := 0; i < 10; i++ {
+		balls = append(balls, MakeBall())
+	}
 
 	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
 		return
@@ -81,54 +90,81 @@ func main() {
 			renderer.SetDrawColor(0, 0, 0, 255)
 			renderer.Clear()
 
-			vertsToDraw := getCirclePoints()
+			for _, ball := range balls {
+				vertsToDraw := getCirclePoints(ball)
+				drawVertices(renderer, vertsToDraw, ball.Color)
 
-			drawVertices(renderer, vertsToDraw, sdl.Color{255, 255, 255, 255})
+				tickBallPosition(ball, float32(elapsed.Seconds()))
+				fmt.Println("elapsed time: ", elapsed.Milliseconds())
+				// }
+			}
 
 			renderer.Present()
-
-			tickBallPosition(float32(elapsed.Seconds()))
-			fmt.Println("elapsed time: ", elapsed.Milliseconds())
-			// }
 
 		}
 	}
 }
 
-func tickBallPosition(delta float32) {
+func MakeBall() *Ball {
 
-	ballPosition.X += ballVelocity.X * delta
-	ballPosition.Y += ballVelocity.Y * delta
+	// generate random position and velocity and radius
+	var randPosition Vector2 = Vector2{X: float32(rand.Intn(screenWidth)), Y: float32(rand.Intn(screenHeight))}
+	var randVelocity Vector2 = Vector2{X: randRange(-300, 300), Y: randRange(-300, 300)}
+	var randRadius float32 = randRange(10, 50)
+	// also randomize color
+	var randColor sdl.Color = sdl.Color{R: uint8(randRange(0, 255)), G: uint8(randRange(0, 255)), B: uint8(randRange(0, 255)), A: 255}
 
-	if ballPosition.X > screenWidth-ballRadius {
-		ballPosition.X = screenWidth - ballRadius
-		ballVelocity.X = -ballVelocity.X
-	}
-
-	if ballPosition.X < ballRadius {
-		ballPosition.X = ballRadius
-		ballVelocity.X = -ballVelocity.X
-
-	}
-
-	if ballPosition.Y > screenHeight-ballRadius {
-		ballPosition.Y = screenHeight - ballRadius
-		ballVelocity.Y = -ballVelocity.Y
-	}
-
-	if ballPosition.Y < ballRadius {
-		ballPosition.Y = ballRadius
-		ballVelocity.Y = -ballVelocity.Y
+	return &Ball{
+		Position: randPosition,
+		Radius:   randRadius,
+		Velocity: randVelocity,
+		Color:    randColor,
 	}
 
 }
 
-func getCirclePoints() []Vector2 {
+func randRange(min, max int) float32 {
+	return float32(rand.Intn(max-min) + min)
+}
+
+func tickBallPosition(ball *Ball, delta float32) {
+	var ballPosition Vector2 = ball.Position
+	var ballVelocity Vector2 = ball.Velocity
+
+	ball.Position.X += ballVelocity.X * delta
+	ball.Position.Y += ballVelocity.Y * delta
+
+	fmt.Println("ball position: ", ballPosition, " ball velocity: ", ballVelocity)
+
+	if ballPosition.X > screenWidth-ballRadius {
+		ball.Position.X = screenWidth - ballRadius
+		ball.Velocity.X = -ballVelocity.X
+	}
+
+	if ballPosition.X < ballRadius {
+		ball.Position.X = ballRadius
+		ball.Velocity.X = -ballVelocity.X
+
+	}
+
+	if ballPosition.Y > screenHeight-ballRadius {
+		ball.Position.Y = screenHeight - ballRadius
+		ball.Velocity.Y = -ballVelocity.Y
+	}
+
+	if ballPosition.Y < ballRadius {
+		ball.Position.Y = ballRadius
+		ball.Velocity.Y = -ballVelocity.Y
+	}
+
+}
+
+func getCirclePoints(ball *Ball) []Vector2 {
+
+	var center Vector2 = ball.Position
+	var radius float32 = ball.Radius
+
 	// use the midpoint circle algorithm
-
-	var center Vector2 = ballPosition
-	const radius float32 = ballRadius
-
 	x := radius
 	y := float32(0)
 	err := float32(0)
